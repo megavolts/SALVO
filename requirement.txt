@@ -1,0 +1,6 @@
+pandas
+scipy
+pint
+# for magnaprobe-toolbox
+pyproj
+cmcrameri
