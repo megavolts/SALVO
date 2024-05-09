@@ -1,0 +1,7 @@
+[MESSAGES CONTROL]
+disable=C0301, W0511, E0401
+#C0301: line-too-long
+#W0511: TODO hook
+#E0401: import-error
+[MASTER]
+init-hook='import sys; sys.path.append("/home/megavolts/git/magnaprobe-toolbox");sys.path.append("/home/megavolts/git/SALVO/salvo")'

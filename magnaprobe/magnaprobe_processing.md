@@ -1,5 +1,4 @@
 # Magnaprobe Processing
-
 Here we describe how we process magnaprobe data file for the SALVO-2024 field campaign
 
 ## 0 - Data download
@@ -45,6 +44,8 @@ At the same time, we mark potential calibration point in the column `CalPoint` w
 
 The preprocessed and quality check (*pqc*) data , is an a-grade data product. The filename is conserved, and the file extension is updated to *.aX.dat* with *X* the smaller integer larger than 0, often *.a1.dat*
 
+This workflow is integrated within the `maganprobe/a1_preprocessing_qc.py` script
+
 ## 2 Manual sanitizing
 During the next step, we performed a manual sanitation of the file, in which the file is open in a spreadsheet editor.
 
@@ -60,6 +61,8 @@ Each removed entry is recorded in a separated *yaml* file, stored in the same di
 The config file can then be used when the data is reprocessed to skip the manual sanitizing operation.
 
 ## 3 Formatting
+The workflow to format magnaprobe data for the line, longline and library site is implemented in python in the following script `magnaprobe/a1a_formatting-.py`.
+
 ### 3.1 Formatting *line* transect
 This operation is specific to format the data output of the 200m transect line. As we are probing the line every meter from 0 to 200m, the file should contain 201 entries. The output file will contain an additional `LineLocation ` columns in which the location of the point along the line is set to the exact integer distance: 0, 1, 2, ..., 200.
 
@@ -76,3 +79,26 @@ The config file can then be used when the data is reprocessed to automate the ad
 ### 3.3 Formatting *library* site
 
 ## 4 Additional EMLID geospatial information
+The workflow to integrate EMLID position in the magnaprobe data is implemented in python in the following script `magnaprobe/a1b_emlid_integration.py`.
+
+The integration of geospatial information from the Emlid rover with the MagnaProbe data generate a b-grade data product. The filename extension will be chagne to *\*.bX*
+
+As of April 2024, the time offset ($\Deltat$) between GPST and UTC is about 18 seconds. The GEODEL MagnaProbe datalogger was set to UTC-8 time with an estimated maximum positive lag of 1 second on April 15. **CHECK THE LAG WHEN RETURNING TO UTQ IN MAY**
+
+
+
+
+
+
+## A Config File
+The configuration file could contain:
+- timezone: during SALVO, MagnaProbe datalogger time was set to AKDT (UTC-8)
+  - `UTC-8`
+- site: generic site location
+  - `arm`: site with heterogeneous tundra subtract at the Barrow Environmental Observatory
+  - `beo`: site with homogeneous tundra subtract at the Barrow Environmental Observatory
+  - `ice`: site with sea ice subtract at Elson Lagoon
+- location:
+  - `line`; 200m E-W transect line
+  - `longline`: ~1500 m E-W transect line
+  - `library`: single point site
