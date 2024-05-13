@@ -30,7 +30,7 @@ def log_type(item):
     return l_type
 
 
-def create_emlid_name(input_name, site, location):
+def create_emlid_name(input_name, site, location, spl_rate=None):
     """
     Create emlid (sub)directory name according to SALVO-2024 nomenclature
     :param input_name:
@@ -39,6 +39,8 @@ def create_emlid_name(input_name, site, location):
         Either: 'arm', 'beo', 'ice
     :param location: string, array of string
         Either 'line', 'longline', 'library'. Could be appended with a dash (-)
+    :param spl_rate: string, default None
+        Sampling rate in Hz
     :return emlid_name: string
         emlid (sub)directory name
     """
@@ -47,6 +49,8 @@ def create_emlid_name(input_name, site, location):
     # define log type
     instrument = [val for key, val in INSTRUMENT_DICT.items() if key in input_name][0]
     l_type = log_type(input_name)
+    if spl_rate is not None:
+        l_type += spl_rate
     output_name_l.append("-".join(filter(None, [instrument, l_type])))
 
     # loop through filename substring for a date

@@ -43,9 +43,6 @@ from salvo.analysis import distance
 MAGNA_FP = "/mnt/data/UAF-data/working_a/SALVO/20240420-BEO/magnaprobe/salvo_beo_line_magnaprobe-geodel_20240420.a3.csv"
 EMLID_FP = "/mnt/data/UAF-data/working_a/SALVO/20240420-BEO/emlid/salvo_BEO_line-longline_emlid-location_20240420.a2.pos"
 
-# GPS-UTC Offset
-DELTA_T = timedelta(seconds=18)
-
 # Perform GPS comparison analysis, and display figure
 DISPLAY = True
 
@@ -87,13 +84,9 @@ print("Loading: ", MAGNA_FP)
 magna_df = pd.read_csv(MAGNA_FP, header=0)
 # Convert magna to UTC
 timezone = float(config["magna"]["timezone"].split("UTC")[-1])
-magna_df["Timestamp"] = (
-    pd.to_datetime(magna_df["Timestamp"], format="%Y-%m-%d %H:%M:%S.%f")
-    - timedelta(hours=timezone)
-    + DELTA_T
-)
-# Save DELTA_T to config file
-config["magna"]["dt"] = DELTA_T
+magna_df["Timestamp"] = pd.to_datetime(
+    magna_df["Timestamp"], format="%Y-%m-%d %H:%M:%S.%f"
+) - timedelta(hours=timezone)
 # Round magna probe time to pose_freq
 magna_df["Timestamp"] = magna_df["Timestamp"].apply(lambda x: x.round(pos_freq))
 # Append '_mg' to all columns headers from position file, but Timestamp
