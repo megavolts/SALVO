@@ -1,6 +1,15 @@
 # -*- coding: utf-8 -*-
 # ! /usr/bin/env python
 """
+This script performed tasks,
+
+- Move and renamed UBX files which were converted to RINEX from `ubx` directory to `rinex` directory
+- Move and rename all the POS position in the emlid directory and subdirectory
+- Add location and event files with the highest sampling rate to config file
+# - Apply a RC-like filter to remove mechanical bouncing that triggered multiple event signals on a short
+# time (Dt < 0.1 s)
+
+
 Inputs:
     EMLID_DIR: Directory containing
         - the emlid archive file as downloaded from the emlid instrument
@@ -21,11 +30,17 @@ import pyproj
 import yaml
 
 from salvo.naming import get_date
+from salvo.naming.folder import list_files_walk
 
 __author__ = "Marc Oggier"
 
 # -- USER VARIABLE
 EMLID_DIR = "/mnt/data/UAF-data/working_a/SALVO/20240420-BEO/emlid"
+EMLID_DIR = "/mnt/data/UAF-data/working_a/SALVO/20240525-ARM/emlid"
+EMLID_DIR = "/mnt/data/UAF-data/working_a/SALVO/20240526-ICE/emlid"
+EMLID_DIR = "/mnt/data/UAF-data/working_a/SALVO/20240527-ARM/emlid"
+
+
 DISPLAY = True
 LOCAL_EPSG = 3338
 # GPST-UTC Offset
@@ -46,8 +61,17 @@ if len(config) == 0:
 # A. PPK correction from raw location UBX
 # Move and renamed UBX files which were converted to RINEX from `ubx` directory to `rinex` directory
 SUBDIR = "ubx"
+spl_rates = {}
 for item in os.scandir(os.path.join(EMLID_DIR, SUBDIR)):
     if item.is_dir() and item.path.split("/")[-1].startswith("rinex_"):
+        pos_files = [
+            file for file in os.listdir(item.path) if file.lower().endswith("pos")
+        ]
+        for file in pos_files:
+            source_fp = os.path.join(item.path, file)
+            target_fp = os.path.join(EMLID_DIR, SUBDIR, file)
+            move(source_fp, target_fp)
+
         # Check for the sampling rate in the RINEX observation file
         obs_files = [file for file in os.listdir(item.path) if file.endswith("24O")]
         spl_rates = {}
@@ -64,6 +88,7 @@ for item in os.scandir(os.path.join(EMLID_DIR, SUBDIR)):
             # compute sampling frequency
             spl_interval = date.diff().median().microseconds / 1e6
             spl_rates[file.split(".")[0]] = 1 / spl_interval
+
         # Move file from subdirectory to root directory, adding sampling frequency
         for file in os.listdir(item.path):
             source_fp = os.path.join(item.path, file)
@@ -71,68 +96,77 @@ for item in os.scandir(os.path.join(EMLID_DIR, SUBDIR)):
             target_fn = file.replace("raw", f"raw{spl_rate:02.0f}Hz")
             target_fp = os.path.join(EMLID_DIR, "rinex", target_fn)
             move(source_fp, target_fp)
-        # Delete subdirecotry
+        # Delete subdirectory
         os.rmdir(item.path)
 
-# B Move and rename the POS position rom subdir to root directory
-# The pos files are located in a subdirectory
-for item in os.scandir(EMLID_DIR):
-    if item.is_dir() and any(file.endswith(".pos") for file in os.listdir(item.path)):
-        spl_rates = {}
-        for file in sorted(os.listdir(item.path)):
-            common_name = file.replace("_events", "").split(".")[0]
-            DATE = get_date(EMLID_DIR)
-            LOCATION = "-".join(config["location"])
-            SITE = config["site"]
-            filename = "salvo_" + SITE + "_" + LOCATION + "_emlid-"
-            if "event" in file:
-                filename += "event"
-            else:
-                filename += "location"
-            # Add sampling frequency in file name
-            if common_name in spl_rates:
-                filename += f"{spl_rates[common_name]:02.0f}Hz"
-            # - Look for XXHz in filename
-            elif "Hz" in file.split("_")[3].split("-")[-1]:
-                spl_rate = file.split("_")[-2][-4:]
-                filename += spl_rate
-                spl_rates[common_name] = float(spl_rate[:2])
-            # - Detect
-            else:
-                with open(
-                    os.path.join(EMLID_DIR, item, file), "r", encoding="UTF=8"
-                ) as f:
-                    content = f.read()
-                # parse text file, looking for date row entry starting with '>'
-                lines = [
-                    line for line in content.split("\n") if not line.startswith("%")
-                ]
-                data = [list(filter(None, line[:23].split(" ")))[0:6] for line in lines]
-                data = pd.DataFrame(data, columns=["date", "time"])
-                data = pd.to_datetime(
-                    data["date"] + " " + data["time"], format="%Y/%m/%d %H:%M:%S.%f"
-                )
-                data = data.loc[data.notna()]
-                # compute sampling frequency
-                spl_interval = (
-                    data.diff().median().seconds
-                    + data.diff().median().microseconds / 1e6
-                )
-                spl_rate = 1 / spl_interval
-                filename += f"{spl_rate:02.0f}Hz"
-                spl_rates[common_name] = spl_rate
-            filename += "_" + DATE + ".a1.pos"
+# A Move and rename all the POS position in the emlid directory and subdirectory
+pos_fns = [file for file in list_files_walk(EMLID_DIR) if file.endswith(".pos")]
 
-            # move and rename file
-            source_fp = os.path.join(EMLID_DIR, item.path, file)
-            target_fp = os.path.join(EMLID_DIR, filename)
-            move(source_fp, target_fp)
+for file in sorted(pos_fns):
+    filename = os.path.basename(file)
+    common_name = file.replace("_events", "").split(".")[0]
+    INSTRUMENT = ("-").join(os.path.basename(file).split("_")[3].split("-raw")[:1])
+    DATETIME = filename.split("_")[-1].split(".")[0]
+    try:
+        pd.to_datetime(DATETIME, format="%Y%m%d-%H%M%S")
+    except ValueError:
+        DATETIME = get_date(EMLID_DIR)
+    else:
+        pass
 
+    LOCATION = "-".join(config["location"])
+    SITE = config["site"]
+    filename = "salvo_" + SITE + "_" + LOCATION + "_" + INSTRUMENT
+    if "event" in file:
+        filename += "-event"
+    else:
+        filename += "-location"
 
+    # Add sampling frequency in file name
+    if common_name in spl_rates:
+        filename += f"-{spl_rates[common_name]:02.0f}Hz"
+    # - Look for XXHz in filename
+    elif "Hz" in file.split("_")[3].split("-")[-1]:
+        spl_rate = file.split("_")[-2][-4:]
+        filename += spl_rate
+        spl_rates[common_name] = float(spl_rate[:2])
+    # - Detect
+    else:
+        with open(os.path.join(EMLID_DIR, item, file), "r", encoding="UTF=8") as f:
+            content = f.read()
+        # parse text file, looking for date row entry starting with '>'
+        lines = [line for line in content.split("\n") if not line.startswith("%")]
+        data = [list(filter(None, line[:23].split(" ")))[0:6] for line in lines]
+        try:
+            data = pd.DataFrame(data, columns=["date", "time"])
+        except ValueError:
+            pass
+        else:
+            data = pd.to_datetime(
+                data["date"] + " " + data["time"], format="%Y/%m/%d %H:%M:%S.%f"
+            )
+            data = data.loc[data.notna()]
+            # compute sampling frequency
+            spl_interval = (
+                data.diff().median().seconds + data.diff().median().microseconds / 1e6
+            )
+            spl_rate = 1 / spl_interval
+            filename += f"-{spl_rate:02.0f}Hz"
+            spl_rates[common_name] = spl_rate
+    filename += "_" + DATETIME + ".a1.pos"
+
+    # move and rename file
+    source_fp = os.path.join(EMLID_DIR, item.path, file)
+    target_fp = os.path.join(EMLID_DIR, filename)
+    move(source_fp, target_fp)
+
+# Rename headers in files
 for file in os.listdir(EMLID_DIR):
     if file.endswith("a1.pos") and len(file.split(".")) == 3:
         ppk_fp = os.path.join(EMLID_DIR, file)
-        ppk_df = pd.read_csv(ppk_fp, sep=r"\s+", header=[9])
+        ppk_df = pd.read_csv(ppk_fp, sep=r"\s+", header=[0])
+        ppk_df = pd.read_csv(ppk_fp, sep=",", header=[0])
+
         ppk_df.rename(columns={"%": "Date"}, inplace=True)
 
         # Compute Timestamp from date (Date) and time (GPST or UTC).
@@ -204,11 +238,21 @@ for common_name, spl_rates in spl_rates.items():
     spl_rate = f"{max(spl_rates):02.0f}Hz"
     ext = f".a{spl_rates[max(spl_rates)]:.0f}.pos"
     spl_name = common_name.split("Hz")[0] + spl_rate + common_name.split("Hz")[1] + ext
-    TYPE = spl_name.split("emlid-")[-1].split("Hz")[0][:-2]
+    TYPE = spl_name.split("emlid-")[-1].split("Hz")[0][:-2].split("-")[0]
     if "position" not in config:
         config["position"] = {TYPE: spl_name}
     else:
         config["position"][TYPE] = spl_name
+
+# # RC-like filtering for event location
+# event_fn = config["position"]['event']
+# event_fp = os.path.join(EMLID_DIR, event_fn)
+# event_df = pd.read_csv(event_fp)
+# event_df['Timestamp'] = pd.to_datetime(event_df['Timestamp'])
+# event_df['DeltaT'] = event_df['Timestamp'].diff()
+# event_df.loc[event_df['DeltaT'] < pd.Timedelta("0.8s")]
+
+
 # Save config file
 with (open(CONFIG_FP, "w", encoding="utf-8")) as f:
     yaml.dump(config, f)

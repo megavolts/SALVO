@@ -31,7 +31,7 @@ Second, we extract each zip archive into a temporary subdirectory following the 
 
 With:
 - SITE is `arm`, `beo`, or `ice`
-- TYPE is `rinex1Hz`, `ubx5Hz`, `raw`
+- TYPE is `rinex1Hz`, `ubx`, `raw`
 - DATE in format `YYYYMMDD`
 - TIME in format `HHMMSS`
 - EXT is the original file extension
@@ -40,54 +40,57 @@ Third, we recreate a zip archive following the SALVO-2024 naming convention, pre
 - reachm2: salvo_SITE_reachm2-LOGTYPE_DATE-TIME.00.zip
 - RS2: salvo_SITE_rs2-LOGTYPE_DATE-TIME.00.zip
 
-Script `a0_file_renaming.py` was developed to perform this workflow.
-
 ## 2 PPK Kinematic processing
 Using kinematic processing (PPK), we corrected the rover (reachm2) data to get a precise track of measurements with respect to the base station (RS2). We used the free application EmlidStudio to perform this step following the online guide ([Emlid website, access on 20240507](https://blog.emlid.com/emlid-studio-ppk-in-a-few-steps/`)).
 
-This process happens in 2 steps:
-### 2.1 RINEX conversion
-First, reachm2 UBX data are converted to RINEX. In EmlidStudio, we definie the receiver (reachm2+), and its height (default 1.72m above ground on the magnaprobe).
+PPK processing could be performed either from the raw location UBX file (preferred) or from the RINEX export from the rover.
 
-The input is:
-- 5Hz raw GPS location UBX file from the rover (reachm2)
+In both case, we use the following configurations in EmlidStudio:
+- filtering: combined
+- time export: UTC
 
-The output is:
-- RINEX navigation *.24P* file,
+### 2.1 PPK postprocessign with UBX
+The inputs are:
+- UBX *.ubx* raw GPS location file from a rover (reachm2)
+- RINEX *.24O* observation file from base (rs2)
+- height of the base (rs2)
+- height of the rover (reachm2)
+
+The outputs are:
+- RINEX navigation *.24P* file
 - RINEX observation *.24O* file,
 - SBAS correction data *.sbs* file.
+- PPK corrected position files: *\*.pos*
+- PPK corrected event position files: *\*_events.pos*
 
-The UBX to RINEX converted files are renamed accordign to SALVO-2024 nomenclature using 'rinex-5Hz' for the TYPE.
-
-### 2.2 PPK postprocessing
+### 2.2 PPK postprocessing with RINEX
 The inputs are:
-- 5Hz RINEX *.24O* observation file from a rover (reachm2):
-- RINEX *.24P* navigation file from the rover (reachm2) from config file:
+- RINEX *.24O* observation file from a rover (reachm2)
+- RINEX *.24P* navigation file from the rover (reachm2) from config file
 - RINEX *.24O* observation file from base (rs2)
-- height of the base (rs2):
+- height of the base (rs2)
+- height of the rover (reachm2)
 
-The height of the rover (reachm2_height) is already included in the RINEX observationf file.
+The outputs are:
+- PPK corrected position files: *\*.pos*
+- PPK corrected event position files: *\*_events.pos*
 
+### 2.3 Renaming
 EmlidStudio outputs two  *\*.pos*  files that are renamed according to the SALVO-2024 naming convention:
-- PPK corrected position files: *\*.pos* to `salvo_SITE_LOCATION_emlid-position5Hz_DATE.a1.pos`
-- PPK corrected event position files: *\*_events.pos* to `salvo_SITE_LOCATION_emlid-events_DATE.a1.pos`
+- PPK corrected position files: *\*.pos* to `salvo_SITE_LOCATION_emlid-positionFFHz_DATE.a1.pos`
+- PPK corrected event position files: *\*_events.pos* to `salvo_SITE_LOCATION_emlid-eventsFFHz_DATE.a1.pos`
 
-Position files are reformatted into a comma-separated files with formatted headers.
+If the PPK corrected were processed with the UBX file. The generated RINEX files are moved within the `rinex` subdirectory, and rename according to the SALVO-2024 naming convention, including sampling frequency.
 
-The python script `a1a_ppk_preprocessing.py` extract automatically the required reachm2 UBX files, and RS2 RINEX files to a working directory.
+### 2.4 Position file formatting
+Position files are reformatted into a comma-separated files with formatted headers, and the UTM location are computed.
 
-The python script `a1b_ppk_postprocessing.py` reorganized the EmlidStudio file outptus:
+## 3. Scripts
+The script `a0_file_renaming.py` was written to rename automatically the raw files according to the workflow describe under [File renaming](#1---file-renaming)
+
+The python script `a1a_ppk_preprocessing.py` extract automatically the required reachm2 UBX files, and RS2 RINEX files to a working director.
+
+The python script `a1b_ppk_postprocessing.py` reorganized the EmlidStudio file outputs:
 - Rename UBX files converted to RINEX, and move them to the root directory, include the sampling frequency in the name.
 - Rename the PPK corrected *.pos* file processed from the previously converted RINEX file
-
-[//]: # (The python script `a1b_ppk_postprocessing.py` relocate the *\*.pos* files to the emlid working root folder, and renamed them according to SALVO nomenclature:)
-
-[//]: # (- position:)
-
-[//]: # (- event:)
-
-
-## A Config File
-The configuration file could contain:
-- timezone: EMLID devices use GPST (UTC) time by default
-  - `UTC`
+- Reformat *\*.pos* file, and compute UTM projection.

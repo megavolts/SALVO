@@ -21,11 +21,18 @@ import logging
 import shutil
 import zipfile
 import yaml
+import pandas as pd
 from salvo.naming import emlid
 
 __author__ = "Marc Oggier"
 
-EMLID_DIR = "/mnt/data/UAF-data/raw/SALVO/20240420-BEO/emlid"
+EMLID_DIR = "/mnt/data/UAF-data/raw/SALVO/20240525-ARM/emlid/"
+EMLID_DIR = "/mnt/data/UAF-data/raw/SALVO/20240526-ICE/emlid/"
+EMLID_DIR = "/mnt/data/UAF-data/raw/SALVO/20240527-ARM/emlid/"
+EMLID_DIR = "/mnt/data/UAF-data/raw/SALVO/20240528-ARM/emlid/"
+EMLID_DIR = "/mnt/data/UAF-data/raw/SALVO/20240529-BEO/emlid/"
+EMLID_DIR = "/mnt/data/UAF-data/raw/SALVO/20240530-ICE/emlid/"
+
 
 # Create `original` directory if it does not exist
 org_dir = os.path.join(EMLID_DIR, "original")
@@ -48,16 +55,24 @@ if len(config) == 0:
 
 # Copy zip-archived to `original` subdirectory if it does not exist
 # Loop through all file in directory
-for item in os.listdir(EMLID_DIR):
-    # Check for zip-archive
-    if not item.startswith("salvo_") and item.endswith(".zip"):
-        zip_fp = os.path.join(EMLID_DIR, item)  # zip filepath
-        bkp_fp = os.path.join(org_dir, item)  # backup filepath
+
+for item in os.scandir(EMLID_DIR):
+    if (
+        item.is_file()
+        and not item.name.startswith("salvo_")
+        and item.name.endswith(".zip")
+    ):
+        zip_fp = item.path  # zip filepath
+        bkp_fp = os.path.join(org_dir, item.name)  # backup filepath
         if not os.path.exists(bkp_fp):  # check if backup file does not exit
             shutil.copy(zip_fp, bkp_fp)  # backup a copy of the original filename
         SITE = config["site"]
+        if isinstance(SITE, list):
+            SITE = "-".join(SITE)
         LOC = "-".join(config["location"])
-
+        LOC = config["site"]
+        if isinstance(LOC, list):
+            LOC = "-".join(LOC)
         with zipfile.ZipFile(zip_fp) as archive:
             # Check for sampling rate for RINEX archive
             if "rinex" in os.path.basename(zip_fp.lower()):
@@ -76,12 +91,35 @@ for item in os.listdir(EMLID_DIR):
                         list(filter(None, content.split("\n")[17].split(" ")))[0]
                     )
                     SPL_RATE = f"{1/spl_interval:02.0f}Hz"
+                elif (
+                    len([line for line in content.split("\n") if line.startswith(">")])
+                    > 2
+                ):
+                    # parse text file, looking for date row entry starting with '>'
+                    lines = [
+                        line for line in content.split("\n") if line.startswith(">")
+                    ]
+                    data = [
+                        list(filter(None, line[1:].split(" ")))[0:6] for line in lines
+                    ]
+                    data = pd.DataFrame(
+                        data,
+                        columns=["year", "month", "day", "hour", "minute", "second"],
+                    )
+                    data = pd.to_datetime(data)
+                    # compute sampling frequency
+                    spl_interval = (
+                        data.diff().median().seconds
+                        + data.diff().median().microseconds / 1e6
+                    )
+                    SPL_RATE = 1 / spl_interval
                 else:
                     SPL_RATE = None
-                    logger.warning(str(obs_file + "Sampling interval not define in "))
+                    logger.warning(str("Sampling interval not define in " + obs_file))
             else:
                 SPL_RATE = None
-            BASENAME = emlid.create_emlid_name(item, SITE, LOC, SPL_RATE)
+
+            BASENAME = emlid.create_emlid_name(item.name, SITE, LOC, SPL_RATE)
             extract_dir = os.path.join(EMLID_DIR, BASENAME)
 
             # loop through the file in the archive, rename during extraction, while conserving directory structure
@@ -142,11 +180,16 @@ for item in os.listdir(EMLID_DIR):
                 print(new_zip_fn + " was created successfully. Cleaning raw directory")
 
             # Add name history record in config file:
-            if "name history" not in config:
-                config["name history"] = {item: new_zip_fn}
+            if "name history" not in config.keys():
+                config["name history"] = {item.name: new_zip_fn}
             else:
-                if item not in config["name history"]:
-                    config["name history"][item] = new_zip_fn
+                if "name history" not in config:
+                    config["name history"][item.name] = new_zip_fn
+                if config["name history"] is None:
+                    config["name history"] = {}
+                    config["name history"][item.name] = new_zip_fn
+                elif item.name not in config["name history"]:
+                    config["name history"][item.name] = new_zip_fn
                 else:
                     continue
 

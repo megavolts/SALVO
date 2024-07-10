@@ -3,7 +3,13 @@ File naming for emlid
 """
 import datetime as dt
 
-INSTRUMENT_DICT = {"reachm2": "reachm2", "UAF_SALVO_R": "rs2", "REACH-BASE-": "rs2"}
+INSTRUMENT_DICT = {
+    "reachm2": "reachm2-salvo",
+    "UAF_SALVO_R": "rs2-salvo",
+    "REACH-BASE-": "rs2-salvo",
+    "CEErover": "rs2-cee317",
+    "CEEbase": "rs2-cee",
+}
 DATE_PATTERNS = {12: "%Y%m%d%H%M", 14: "%Y%m%d%H%M%S"}  # potential date pattern
 
 
@@ -50,7 +56,7 @@ def create_emlid_name(input_name, site, location, spl_rate=None):
     instrument = [val for key, val in INSTRUMENT_DICT.items() if key in input_name][0]
     l_type = log_type(input_name)
     if spl_rate is not None:
-        l_type += spl_rate
+        l_type += str("%.0f" % spl_rate)
     output_name_l.append("-".join(filter(None, [instrument, l_type])))
 
     # loop through filename substring for a date

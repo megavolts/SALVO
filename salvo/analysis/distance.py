@@ -53,7 +53,7 @@ def compute_distance(input_df, origin_pt=None):
         Origin point should be either of format [x0, y0, z0] or [x0, y0]. In the latter case, z0 is set to zero (z0=0).
     :return:
     """
-    data_df = input_df.copy()
+    data_df = input_df.copy().reset_index(drop=True)
     if origin_pt is None:
         origin_pt = np.array(
             [data_df.iloc[0, ii_col] for ii_col, _ in enumerate(input_df.columns)]
