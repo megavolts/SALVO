@@ -1,7 +1,0 @@
-python >= 3.8  # for ordered dictionnary
-pandas
-scipy
-pint
-# for magnaprobe-toolbox
-pyproj
-cmcrameri

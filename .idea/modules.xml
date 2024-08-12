@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/SALVO.iml" filepath="$PROJECT_DIR$/.idea/SALVO.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../hobo/.idea/hobo.iml" filepath="$PROJECT_DIR$/../hobo/.idea/hobo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../hobo-toolbox/.idea/hobo-toolbox.iml" filepath="$PROJECT_DIR$/../hobo-toolbox/.idea/hobo-toolbox.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../magnaprobe-toolbox/.idea/magnaprobe-utils.iml" filepath="$PROJECT_DIR$/../magnaprobe-toolbox/.idea/magnaprobe-utils.iml" />
+    </modules>
+  </component>
+</project>
