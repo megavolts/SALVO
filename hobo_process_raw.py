@@ -116,6 +116,6 @@ for sensor_name in sensor_fp_d:
     plt.show()
 
     # Export data
-    data_df.to_csv(os.path.join(output_dir, f'{sensor_name}.01.csv'), index=False)
+    data_df.to_csv(os.path.join(output_dir, f'{sensor_name}.01-20241121.csv'), index=False)
 
 
