@@ -88,6 +88,9 @@ RAW_FP = "/mnt/data/UAF-data/working_a/SALVO/20240617-BEO/magnaprobe/salvo_beo_l
 RAW_FP = "/mnt/data/UAF-data/working_a/SALVO/20240617-BEO/magnaprobe/salvo_beo_line_magnaprobe-geodel_20240617-144749.00.dat"
 RAW_FP = "/mnt/data/UAF-data/working_a/SALVO/20240618-ICE/magnaprobe/salvo_ice_line_magnaprobe-geodel_20240617-130204.00.dat"
 
+# Longline:
+RAW_FP = "/mnt/data/UAF-data/working_a/SALVO/20240609-arm/magnaprobe/salvo_arm_longline_magnaprobe-geodel_20240609.00.dat"
+
 # -- USER VARIABLES
 # Enable plotting with relative coordinate to the transect origin x0=0, y0=0
 # ESPG code for local projection

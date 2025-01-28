@@ -81,6 +81,10 @@ QC_FP = "/mnt/data/UAF-data/working_a/SALVO/20240617-BEO/magnaprobe/salvo_beo_li
 QC_FP = "/mnt/data/UAF-data/working_a/SALVO/20240617-BEO/magnaprobe/salvo_beo_line_magnaprobe-geodel_20240617-144749.a2.csv"
 QC_FP = "/mnt/data/UAF-data/working_a/SALVO/20240618-ICE/magnaprobe/salvo_ice_line_magnaprobe-geodel_20240617-130204.a2.csv"
 QC_FP = "/mnt/data/UAF-data/working_a/SALVO/20240618-ICE/magnaprobe/salvo_ice_line_magnaprobe-geodel_20240617-130204b.a2.csv"
+
+# Longline
+QC_FP = "/mnt/data/UAF-data/working_a/SALVO/20240609-arm/magnaprobe/salvo_arm_longline_magnaprobe-geodel_20240609.a2.csv"
+
 # Load qc-ed data
 qc_data = mt.load.qc_data(QC_FP)
 
@@ -111,6 +115,13 @@ if "longline" in os.path.basename(QC_FP):
     # Since the longline transect and the library is measured without a fixed distance, we don't check for the distance
     qc_data.loc[qc_data["QC_flag"] == 8, "QC_flag"] = 1
     logger.error("other mode are not implemented")
+    if "LineLocation" not in qc_data.columns:
+        qc_data["LineLocation"] = [np.nan] * len(qc_data)
+    else:
+        qc_data = qc_data.sort_values(by=["LineLocation"])
+
+    qc_data.loc[qc_data["SnowDepth"] < 0, "SnowDepth"] = 0
+
 
 elif "line" in QC_FP:
     if "line50cm" in QC_FP:
@@ -119,6 +130,8 @@ elif "line" in QC_FP:
         qc_data["LineLocation"] = [np.nan] * len(qc_data)
     else:
         qc_data = qc_data.sort_values(by=["LineLocation"])
+
+
 
     if len(qc_data) < NPOINTS:
         # Add information in comment columns
@@ -225,7 +238,6 @@ if "snowpit" not in os.path.basename(QC_FP):
         plot_df = qc_data.set_index("TrackDistCum", drop=True)
         plot_df = mt.io.plot.set_origin(plot_df, plot_from_origin=PLOT_ORIGIN_FLAG)
         fig = mt.io.plot.summary(plot_df, library=False)
-
     elif "line" in QC_FP:
         if qc_data["LineLocation"].isna().all():
             plot_df = qc_data.set_index("TrackDistCum", drop=True)
